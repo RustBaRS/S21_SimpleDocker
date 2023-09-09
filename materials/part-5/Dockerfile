@@ -1,0 +1,35 @@
+FROM nginx:latest
+USER root
+WORKDIR /home/
+COPY ./hello.c /home/hello.c
+COPY ./start_point.sh /home/start_point.sh
+COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
+RUN apt-get upgrade && apt-get update && apt-get -y install -y gcc libfcgi-dev spawn-fcgi; \
+    curl -O https://nginx.org/keys/nginx_signing.key; \
+    rpm --import ./nginx_signing.key; \
+    apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    # Это для исправления фатальной уязвимости
+    useradd shoredim; \
+    chown -R shoredim:shoredim /home; \
+    chown -R shoredim:shoredim /etc/nginx/nginx.conf; \
+    # Раздача прав для исправления INFO уязвимостей
+    chown -R shoredim:shoredim /var/cache/nginx; \
+    touch /var/run/nginx.pid; \
+    chown -R shoredim:shoredim /var/run/nginx.pid; \
+    chmod g-s /usr/bin/expiry; \
+    chmod u-s /usr/bin/newgrp; \
+    chmod g-s /usr/bin/chage; \
+    chmod g-s /sbin/unix_chkpwd; \
+    chmod u-s /bin/mount; \
+    chmod g-s /usr/bin/wall; \
+    chmod u-s /bin/su; \
+    chmod u-s /usr/bin/passwd; \
+    chmod u-s /usr/bin/chfn; \
+    chmod u-s /usr/bin/chsh; \
+    chmod u-s /usr/bin/gpasswd; \
+    chmod u-s /bin/umount;
+USER shoredim
+# Создание пользователя без root прав для исправления WARN уязвимости
+HEALTHCHECK --interval=5m --timeout=3s CMD curl -f http://localhost/ || exit 1
+# Для исправления INFO уязвимости
+ENTRYPOINT ["sh", "./start_point.sh"]
